@@ -28,7 +28,7 @@ they are drawn from per-character surfaces, as before the engine was used.")
   "The text engine of the display's renderer, or NIL before it is created.")
 
 (defvar *texts* (make-hash-table)
-  "TTF_Font pointer address -> (string -> TTF_Text) hash table.")
+  "TTF_Font pointer address -> (character -> TTF_Text) hash table.")
 
 (defvar *text-count* 0
   "Number of texts in *TEXTS*.")
@@ -65,26 +65,26 @@ and has been created for the display's renderer."
   (clrhash *texts*)
   (setf *text-count* 0))
 
-(defun get-text (font string)
-  "Return the cached text drawing STRING with FONT, creating it if needed,
-or NIL if SDL_ttf cannot create it."
+(defun get-text (font character)
+  "Return the cached text drawing CHARACTER with FONT, creating it if
+needed, or NIL if SDL_ttf cannot create it."
   (let* ((address (cffi:pointer-address font))
          (texts (or (gethash address *texts*)
-                    (setf (gethash address *texts*) (make-hash-table :test 'equal)))))
-    (or (gethash string texts)
+                    (setf (gethash address *texts*) (make-hash-table)))))
+    (or (gethash character texts)
         (progn
           (when (>= *text-count* *max-texts*)
             (clear-text-cache)
-            (setf texts (setf (gethash address *texts*) (make-hash-table :test 'equal))))
-          (let ((text (lem-sdl3/ffi:create-text *engine* font string)))
+            (setf texts (setf (gethash address *texts*) (make-hash-table))))
+          (let ((text (lem-sdl3/ffi:create-text *engine* font (string character))))
             (when text
               (incf *text-count*)
-              (setf (gethash string texts) text)))))))
+              (setf (gethash character texts) text)))))))
 
-(defun draw-glyph (font string x y color)
-  "Draw STRING with FONT in COLOR (a lem:color) with its top-left corner at
-\(X, Y).  Return true if it was drawn."
-  (let ((text (get-text font string)))
+(defun draw-glyph (font character x y color)
+  "Draw CHARACTER with FONT in COLOR (a lem:color) with its top-left corner
+at (X, Y).  Return true if it was drawn."
+  (let ((text (get-text font character)))
     (when text
       (lem-sdl3/ffi:set-text-color text
                                    (lem:color-red color)
